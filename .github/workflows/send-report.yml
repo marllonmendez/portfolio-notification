@@ -1,7 +1,7 @@
 name: Send Report
 on:
   schedule:
-    - cron: "00 23 * * *"
+    - cron: "00 03 * * *"
 jobs:
   send:
     name: Call API to send report
