@@ -98,7 +98,7 @@ def send_email(count, log, report_date_to_display):
         <html>
             <body>
                 <h2>Relatório Portfólio - {report_date_str}</h2>
-                <p>Acessos diários do meu portfólio</p>
+                <p>Confira os acessos recebidos no portfólio neste dia:</p>
                 <p><strong>Total de visitas:</strong> {count}</p>
                 <p><strong>Horários de acesso:</strong></p>
                 {time_list_html}
