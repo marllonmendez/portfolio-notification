@@ -76,25 +76,38 @@ def send_email(count, log, report_date_to_display):
     if not all([EMAIL_ADDRESS, EMAIL_PASSWORD]):
         logging.error("Credenciais de email não configuradas. Email não enviado!")
         return False
+
     try:
         sorted_log_items = sorted(log.items())
-        time_list_html = "<ul>" + "".join(
-            f"<li>{hour} - {visits} visita(s)</li>" for hour, visits in sorted_log_items
-        ) + "</ul>" if log else "<p>Nenhuma visita humana registrada neste dia.</p>"
+
+        if log:
+            time_list_html = (
+                "<ul>" +
+                "".join(
+                    f"<li>{hour} - {visits} visita{'s' if visits > 1 else ''}</li>"
+                    for hour, visits in sorted_log_items
+                ) +
+                "</ul>"
+            )
+        else:
+            time_list_html = "<p>Nenhuma visita registrada neste dia.</p>"
 
         report_date_str = report_date_to_display.strftime('%d/%m/%Y')
+
         html_content = f"""
         <html>
             <body>
-                <h1>Relatório diário de acessos - {report_date_str}</h1>
-                <p>Total de visita(s): <strong>{count}</strong></p>
-                <p><strong>Lista do horário de visita(s):</strong></p>
+                <h2>Relatório Portfólio - {report_date_str}</h2>
+                <p>Acessos diários do meu portfólio</p>
+                <p><strong>Total de visitas:</strong> {count}</p>
+                <p><strong>Horários de acesso:</strong></p>
                 {time_list_html}
             </body>
         </html>
         """
+
         msg = MIMEText(html_content, 'html')
-        msg['Subject'] = f"Relatório Portfólio - ({report_date_str})"
+        msg['Subject'] = f"Relatório Portfólio - {report_date_str}"
         msg['From'] = EMAIL_ADDRESS
         msg['To'] = EMAIL_ADDRESS
 
@@ -102,8 +115,10 @@ def send_email(count, log, report_date_to_display):
             server.starttls()
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             server.send_message(msg)
-        logging.info(f"Relatório de visitas para {report_date_str} enviado com {count} visita(s).")
+
+        logging.info(f"Relatório de visita(s) para {report_date_str} enviado com {count} visita(s).")
         return True
+
     except Exception as ex:
         logging.error(f"Erro ao enviar relatório para {report_date_to_display.strftime('%d/%m/%Y')}: {ex}")
         return False
