@@ -1,0 +1,17 @@
+name: Send Report
+on:
+  schedule:
+    - cron: "00 03 * * *"
+jobs:
+  send:
+    name: Call API to send report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Report
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -v \
+            https://portfolio-notification.fly.dev/send-report
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
