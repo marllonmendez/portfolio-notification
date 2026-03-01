@@ -12,6 +12,6 @@ jobs:
           curl -X POST \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -v \
-            https://portfolio-notification.fly.dev/send-report
+            https://seu-projeto-no-render.onrender.com/send-report
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}

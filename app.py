@@ -10,10 +10,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from user_agents import parse
 
-# --- Configuração de Logging ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# --- Carrega Variáveis de Ambiente ---
 load_dotenv()
 EMAIL_ADDRESS = os.getenv('EMAIL_ADDRESS')
 EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
@@ -22,11 +20,9 @@ SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
 UPSTASH_REDIS_REST_URL = os.getenv('UPSTASH_REDIS_REST_URL')
 CRON_SECRET = os.getenv('CRON_SECRET')
 
-# --- Configuração do App Flask ---
 app = Flask(__name__)
 CORS(app)
 
-# --- Conexão Redis ---
 redis_client = None
 if UPSTASH_REDIS_REST_URL:
     try:
@@ -40,7 +36,6 @@ else:
     logging.warning("UPSTASH_REDIS_REST_URL não definida.")
 
 
-# --- Funções Auxiliares ---
 def identificar_bot(user_agent_string):
     if not user_agent_string:
         return True
@@ -49,27 +44,40 @@ def identificar_bot(user_agent_string):
     ua_lower = user_agent_string.lower()
 
     if user_agent.is_bot or 'bot' in ua_lower:
-        logging.info("Bot detectado.")
         return True
 
     return False
 
 
-# --- Funções Principais ---
-def send_email(count, report_date_to_display):
+def send_email(count, log, report_date_to_display):
     if not all([EMAIL_ADDRESS, EMAIL_PASSWORD]):
-        logging.error("Credenciais de email não configuradas. Email não enviado!")
         return False
 
     try:
+        sorted_log_items = sorted(log.items())
+
+        if log:
+            time_list_html = (
+                    "<ul>" +
+                    "".join(
+                        f"<li>{hour} - {visits} visualização{'es' if int(visits) > 1 else ''}</li>"
+                        for hour, visits in sorted_log_items
+                    ) +
+                    "</ul>"
+            )
+        else:
+            time_list_html = "<p>Nenhuma visualização registrada neste dia.</p>"
+
         report_date_str = report_date_to_display.strftime('%d/%m/%Y')
 
         html_content = f"""
         <html>
             <body>
                 <h2>Relatório Portfólio - {report_date_str}</h2>
-                <p>Confira os acessos recebidos no portfólio neste dia:</p>
-                <p><strong>Total de visitas:</strong> {count}</p>
+                <p>Confira as métricas de acesso do seu portfólio:</p>
+                <p><strong>Total de visualizações:</strong> {count}</p>
+                <p><strong>Distribuição por horário:</strong></p>
+                {time_list_html}
             </body>
         </html>
         """
@@ -84,11 +92,10 @@ def send_email(count, report_date_to_display):
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             server.send_message(msg)
 
-        logging.info(f"Relatório de visita(s) para {report_date_str} enviado com {count} visita(s).")
         return True
 
     except Exception as ex:
-        logging.error(f"Erro ao enviar relatório para {report_date_to_display.strftime('%d/%m/%Y')}: {ex}")
+        logging.error(f"Erro ao enviar relatório: {ex}")
         return False
 
 
@@ -96,11 +103,9 @@ def register_visit_in_redis():
     user_agent_string = request.headers.get('User-Agent')
 
     if not user_agent_string or identificar_bot(user_agent_string):
-        logging.info("Acesso de bot IGNORADO.")
         return True, 200
 
     if not redis_client:
-        logging.warning("Redis desabilitado, visita não registrada!")
         return False, 503
 
     now_utc = datetime.now(timezone.utc)
@@ -108,23 +113,26 @@ def register_visit_in_redis():
     brt_tz = timezone(brt_offset, name="BRT")
     now_brt = now_utc.astimezone(brt_tz)
 
-    date_str_for_keys = now_brt.strftime('%Y-%m-%d')
-    count_key_current_day = f"portfolio:count:{date_str_for_keys}"
+    date_str = now_brt.strftime('%Y-%m-%d')
+    hour_str = now_brt.strftime('%H:%M')
 
-    ttl_seconds = 86400  # 24 horas
+    count_key = f"portfolio:count:{date_str}"
+    log_key = f"portfolio:log:{date_str}"
+
+    ttl_seconds = 172800
 
     try:
-        # Apenas incrementa o contador diário
-        total_visits = redis_client.incr(count_key_current_day)
+        pipe = redis_client.pipeline()
+        pipe.incr(count_key)
+        pipe.hincrby(log_key, hour_str, 1)
+        pipe.expire(count_key, ttl_seconds)
+        pipe.expire(log_key, ttl_seconds)
+        results = pipe.execute()
 
-        # Se foi a primeira visita do dia, define o TTL de 24 horas
-        if total_visits == 1:
-            redis_client.expire(count_key_current_day, ttl_seconds)
-
-        logging.info(f"Nova visita registrada. Data BRT: {date_str_for_keys}. Total atual: {total_visits}")
+        logging.info(f"Visualização registrada: {date_str} {hour_str}. Total do dia: {results[0]}")
         return True, 204
     except Exception as ex:
-        logging.error(f"Erro ao registrar visita. Data: {date_str_for_keys}")
+        logging.error(f"Erro ao registrar visualização: {ex}")
         return False, 500
 
 
@@ -134,27 +142,26 @@ def process_report_request():
     report_target_date = current_job_run_brt - timedelta(days=1)
     report_target_date_str = report_target_date.strftime('%Y-%m-%d')
 
-    count_key_for_report = f"portfolio:count:{report_target_date_str}"
+    count_key = f"portfolio:count:{report_target_date_str}"
+    log_key = f"portfolio:log:{report_target_date_str}"
 
     if not redis_client:
-        logging.error("Redis desabilitado, não é possível enviar relatório.")
         return {"message": "Redis desabilitado"}, 503
-
     try:
-        count = int(redis_client.get(count_key_for_report) or 0)
+        count = int(redis_client.get(count_key) or 0)
+        log_raw = redis_client.hgetall(log_key)
+        log = {hour: int(visits) for hour, visits in log_raw.items()}
 
-        success = send_email(count, report_target_date)
+        success = send_email(count, log, report_target_date)
         if success:
-            logging.info(f"Relatório para {report_target_date_str} enviado. {count} acessos.")
-            return {"message": f"Relatório enviado com {count} acessos."}, 200
+            return {"message": f"Relatório de {report_target_date_str} enviado com sucesso."}, 200
         else:
-            return {"message": "Erro ao enviar email."}, 500
+            return {"message": "Falha ao enviar o e-mail do relatório."}, 500
     except Exception as ex:
-        logging.error(f"Erro ao processar /send-report: {ex}")
-        return {"message": "Erro interno do servidor."}, 500
+        logging.error(f"Erro no processamento do relatório: {ex}")
+        return {"message": "Erro interno no servidor."}, 500
 
 
-# --- Rotas da API ---
 @app.route('/track-visit', methods=['GET'])
 def track_visit():
     success, status_code = register_visit_in_redis()
@@ -167,13 +174,10 @@ def trigger_send_report():
     expected_token = f"Bearer {CRON_SECRET}"
     if CRON_SECRET and (not auth_header or auth_header != expected_token):
         return jsonify({"message": "Não Autorizado"}), 401
-
     response_data, status_code = process_report_request()
     return jsonify(response_data), status_code
 
 
-# --- Execução para Teste Local ---
 if __name__ == '__main__':
-    port = int(os.getenv('PORT', 5000))
-    logging.info(f"Iniciando servidor Flask para desenvolvimento local na porta {port}...")
-    app.run(host='0.0.0.0', port=port, debug=True)
+    port = int(os.getenv('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
