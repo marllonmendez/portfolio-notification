@@ -102,6 +102,7 @@ def send_email(count, log, report_date_to_display):
 def register_visit_in_redis():
     user_agent_string = request.headers.get('User-Agent')
 
+    # Ignora se não houver User-Agent ou se for um Bot
     if not user_agent_string or identificar_bot(user_agent_string):
         return True, 200
 
@@ -119,6 +120,7 @@ def register_visit_in_redis():
     count_key = f"portfolio:count:{date_str}"
     log_key = f"portfolio:log:{date_str}"
 
+    # TTL de 48h para garantir que os dados durem até o envio do relatório
     ttl_seconds = 172800
 
     try:
@@ -173,6 +175,7 @@ def trigger_send_report():
     auth_header = request.headers.get('Authorization')
     expected_token = f"Bearer {CRON_SECRET}"
     if CRON_SECRET and (not auth_header or auth_header != expected_token):
+        logging.warning("Tentativa de acesso não autorizado ao /send-report.")
         return jsonify({"message": "Não Autorizado"}), 401
     response_data, status_code = process_report_request()
     return jsonify(response_data), status_code
