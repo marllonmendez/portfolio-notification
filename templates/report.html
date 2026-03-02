@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Acessos</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5fe;">
+    <table align="center" border="0" cellpadding="0" cellspacing="0" width="600" style="border-collapse: collapse; margin-top: 30px; margin-bottom: 30px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(10, 77, 106, 0.1);">
+        <tr>
+            <td bgcolor="#0a4d6a" style="padding: 50px 20px; text-align: center;">
+                <h1 style="color: #91dfec; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: 1px;">Relatório de Acessos</h1>
+                <p style="color: #f1f5fe; margin: 8px 0 0 0; font-size: 14px; opacity: 0.9;">{{ data_relatorio }}</p>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 40px 40px;">
+                <div style="text-align: center; margin-bottom: 45px;">
+                    <span style="font-size: 13px; color: #1e2d52; text-transform: uppercase; font-weight: 600; letter-spacing: 2px;">Total de Visualizações</span>
+                    <div style="font-size: 64px; font-weight: 800; color: #3abdd6; margin-top: 5px;">{{ total_visitas }}</div>
+                </div>
+
+                <h2 style="font-size: 16px; color: #0a4d6a; border-bottom: 2px solid #f1f5fe; padding-bottom: 12px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px;">Distribuição por Horário</h2>
+
+                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;">
+                    {% if log_itens %}
+                        {% for hour, visits in log_itens %}
+                        <tr>
+                            <td style="padding: 14px 0; border-bottom: 1px solid #f1f5fe; color: #1e2d52;">
+                                <strong>{{ hour }}</strong>
+                            </td>
+                            <td style="padding: 14px 0; border-bottom: 1px solid #f1f5fe; text-align: right; color: #3abdd6; font-weight: 700; font-size: 16px;">
+                                {{ visits }} {{ 'visita' if visits == 1 else 'visitas' }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="2" style="padding: 30px 0; text-align: center; color: #0a4d6a; font-style: italic; opacity: 0.6;">
+                                Nenhuma atividade registrada no dia anterior.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td bgcolor="#0e1a2b" style="padding: 30px; text-align: center; font-size: 12px; color: #91dfec; font-weight: 500;">
+                <p style="margin: 0; letter-spacing: 1px;">&copy; 2026 Marllon Mendez</p>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

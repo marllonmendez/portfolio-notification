@@ -6,3 +6,6 @@
 
 # venv
 /.venv
+
+# templates
+email_preview.html
