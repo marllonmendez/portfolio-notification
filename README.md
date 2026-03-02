@@ -12,6 +12,7 @@ O sistema funciona como um microsserviço de análise ultra-leve, contabilizando
 - **Framework Web:** Flask
 - **Servidor de Produção:** Gunicorn (com suporte a threads)
 - **Banco de Dados (Cache):** Redis (via [Upstash](https://upstash.com/))
+- **Template Engine:** Jinja2 (HTML/CSS Dinâmico)
 - **Containerização:** Docker
 - **Plataforma de Hospedagem:** [Render](https://render.com/)
 
@@ -20,9 +21,20 @@ O sistema funciona como um microsserviço de análise ultra-leve, contabilizando
 - **Contagem Anônima:** Contabiliza cada visualização de forma totalmente anônima, sem armazenar IPs, IDs ou hashes.
 - **Filtro de Bots:** Identificação e descarte automático de acessos vindos de web crawlers e bots de busca para manter métricas reais.
 - **Relatórios Automáticos (e-mail):**
+  - Design profissional com paleta de cores personalizada via templates HTML.
   - Total de visualizações do dia anterior.
   - Log detalhado de acessos distribuídos por faixa horária.
 - **Gestão de Recursos:** Limpeza automática de dados no Redis a cada 48h para otimização do plano gratuito.
+
+### Visualização do Relatório
+
+Para garantir a melhor experiência visual e facilitar a manutenção do design do e-mail sem a necessidade de disparos reais de SMTP, o projeto conta com um script de visualização local.
+
+Para ver como o relatório está ficando, execute o comando abaixo no seu terminal (dentro da pasta do projeto):
+
+```bash
+python .\preview.py
+```
 
 ### Variáveis de Ambiente
 
@@ -32,11 +44,11 @@ O sistema funciona como um microsserviço de análise ultra-leve, contabilizando
 | `EMAIL_PASSWORD`           | Senha de aplicativo do e-mail (SMTP).                   |
 | `UPSTASH_REDIS_REST_URL`   | URL de conexão com o Redis.                             |
 | `CRON_SECRET`              | Token de segurança para validar o disparo do relatório. |
-| `SMTP_SERVER`              | Servidor SMTP (ex: smtp.gmail.com).                     |
+| `SMTP_SERVER`              | Servidor SMTP (smtp.gmail.com).                         |
 
 ### Privacidade e Transparência
 
-Este projeto foi construído focando na privacidade total do usuário. **Não coletamos, processamos ou armazenamos dados pessoais.** O sistema apenas incrementa contadores numéricos no banco de dados. Como nenhum dado identificável (como IP) é lido ou gravado, o projeto está intrinsecamente em conformidade com as diretrizes da LGPD.
+Este projeto foi construído focando na privacidade total do usuário. **Não coleto, processo ou armazeno dados pessoais.** O sistema apenas incrementa contadores numéricos no banco de dados. Como nenhum dado identificável (como IP) é lido ou gravado, o projeto está intrinsecamente em conformidade com as diretrizes da LGPD.
 
 ---
 
@@ -52,6 +64,7 @@ The system works as an ultra-lightweight analytics microservice, counting real-t
 * **Web Framework:** Flask
 * **Production Server:** Gunicorn (with thread support)
 * **Database (Cache):** Redis (via [Upstash](https://upstash.com/))
+* **Template Engine**: Jinja2 (Dynamic HTML/CSS)
 * **Containerization:** Docker
 * **Hosting Platform:** [Render](https://render.com/)
 
@@ -60,19 +73,30 @@ The system works as an ultra-lightweight analytics microservice, counting real-t
 * **Anonymous Counting:** Counts every view completely anonymously, without storing IPs, IDs, or hashes.
 * **Bot Filtering:** Automatic detection and exclusion of traffic from web crawlers and search bots to keep metrics accurate.
 * **Automated Reports (Email):**
-  * Total views from the previous day.
+  * Professional design with custom color palette via HTML templates.
   * Detailed access logs distributed by time range.
 * **Resource Management:** Automatic cleanup of Redis data every 48 hours to optimize usage under the free plan.
 
+### Email Preview
+
+To ensure the best visual experience and facilitate email design maintenance without the need for actual SMTP triggers, the project includes a local preview script.
+
+To see what the report looks like, run:
+
+```bash
+python .\preview.py
+```
+
+
 ### Environment Variables
 
-| Variable                   | Description                                         |
-|----------------------------|-----------------------------------------------------|
-| `EMAIL_ADDRESS`            | Email address used to send and receive the report.  |
-| `EMAIL_PASSWORD`           | App-specific email password (SMTP).                 |
-| `UPSTASH_REDIS_REST_URL`   | Redis connection URL.                               |
-| `CRON_SECRET`              | Security token to validate the report trigger.      |
-| `SMTP_SERVER`              | SMTP server (e.g., smtp.gmail.com).                 |
+| Variable                   | Description                                       |
+|----------------------------|---------------------------------------------------|
+| `EMAIL_ADDRESS`            | Email address used to send and receive the report.|
+| `EMAIL_PASSWORD`           | App-specific email password (SMTP).               |
+| `UPSTASH_REDIS_REST_URL`   | Redis connection URL.                             |
+| `CRON_SECRET`              | Security token to validate the report trigger.    |
+| `SMTP_SERVER`              | SMTP server (smtp.gmail.com).                     |
 
 ### Privacy & Transparency
 
