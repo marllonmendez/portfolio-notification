@@ -2,16 +2,18 @@ name: Send Report
 on:
   schedule:
     - cron: "00 03 * * *"
+
 jobs:
   send:
     name: Call API to send report
     runs-on: ubuntu-latest
     steps:
       - name: Send Report
-        run: |
-          curl -X POST \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -v \
-            https://seu-projeto-no-render.onrender.com/send-report
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          REPORT_API_URL: ${{ secrets.REPORT_API_URL }}
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -v \
+            $REPORT_API_URL
