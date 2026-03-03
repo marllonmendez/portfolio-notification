@@ -43,6 +43,16 @@ O sistema funciona como um microsserviço de análise **ultra-leve e seguro**, c
   - TTL automático de 48 horas para chaves no Redis.
   - Projeto otimizado para planos gratuitos.
 
+### Visualização do Relatório
+
+Para garantir a melhor experiência visual e facilitar a manutenção do design do e-mail sem a necessidade de disparos reais de SMTP, o projeto conta com um script de visualização local.
+
+Para ver como o relatório está ficando, execute o comando abaixo no seu terminal (dentro da pasta do projeto):
+
+```bash
+python .\preview.py
+```
+
 ### Endpoints
 
 #### `POST /track-visit`
@@ -150,6 +160,52 @@ The system works as a **secure ultra-lightweight analytics microservice**, count
 - **Resource Management**
   - Redis keys expire automatically after 48 hours.
 
+### Email Preview
+
+To ensure the best visual experience and facilitate email design maintenance without the need for actual SMTP triggers, the project includes a local preview script.
+
+To see what the report looks like, run:
+
+```bash
+python .\preview.py
+```
+
+### Endpoints
+
+#### `POST /track-visit`
+
+Endpoint responsible for registering a valid visit.
+
+Rules:
+- The request origin must belong to an authorized domain.
+- The tracking token must be valid (when configured).
+- Bots are automatically ignored.
+
+Expected headers:
+- `Origin` or `Referer`
+- `User-Agent`
+- `X-Track-Token` (optional, if enabled)
+
+---
+
+#### `POST /send-report`
+
+Endpoint responsible for generating and sending the daily report.
+
+- Protected by **Bearer Token** authentication.
+- Must be triggered by an external job (cron, pipeline, scheduler).
+
+Required header:
+- `Authorization: Bearer <CRON_SECRET>`
+
+### Execution Flow
+
+1. The portfolio front-end sends a `POST` request to `/track-visit`. 
+2. The service validates the domain, token, and User-Agent. 
+3. Valid visits are aggregated in Redis by date and hour.
+4. An external job triggers a `POST` request to `/send-report`.
+5. The report for the previous day is generated and sent via email.
+
 ### Environment Variables
 
 | Variable                 | Description                                                              |
@@ -162,6 +218,12 @@ The system works as a **secure ultra-lightweight analytics microservice**, count
 | `TRACK_TOKEN`            | Optional token to authenticate tracking requests.                        |
 | `ALLOWED_DOMAIN`         | Authorized domain for visit tracking.                                    |
 | `PORT`                   | Application port (default: 8080).                                        |
+
+### Security
+
+- Explicit validation of the request origin domain.
+- Token-based authentication for both tracking and report triggering.
+- No sensitive visitor data is collected or persisted.
 
 ### Privacy & Transparency
 

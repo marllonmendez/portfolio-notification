@@ -12,7 +12,8 @@ def generate_preview():
             ("12:00", 45),
             ("18:30", 50),
             ("22:15", 19)
-        ]
+        ],
+        "ano_atual": 2026,
     }
     html_content = template.render(**mock_data)
     with open("email_preview.html", "w", encoding="utf-8") as f:
