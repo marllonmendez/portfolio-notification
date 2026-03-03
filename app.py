@@ -1,10 +1,7 @@
 import logging
 import os
-import smtplib
+import resend
 from datetime import datetime, timedelta, timezone
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-
 import redis
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
@@ -14,12 +11,15 @@ from user_agents import parse
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 load_dotenv()
-EMAIL_ADDRESS = os.getenv('EMAIL_ADDRESS')
-EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
-SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
-SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
+RESEND_API_KEY = os.getenv('RESEND_API_KEY')
+EMAIL_TO = os.getenv('EMAIL_ADDRESS')
+RESEND_FROM = os.getenv('RESEND_FROM')
 UPSTASH_REDIS_REST_URL = os.getenv('UPSTASH_REDIS_REST_URL')
 CRON_SECRET = os.getenv('CRON_SECRET')
+TRACK_TOKEN = os.getenv('TRACK_TOKEN')
+ALLOWED_DOMAIN = os.getenv('ALLOWED_DOMAIN')
+
+resend.api_key = RESEND_API_KEY
 
 app = Flask(__name__)
 CORS(app)
@@ -40,6 +40,7 @@ if UPSTASH_REDIS_REST_URL:
 else:
     logging.warning("UPSTASH_REDIS_REST_URL não definida.")
 
+
 def identificar_bot(user_agent_string):
     if not user_agent_string:
         return True
@@ -49,8 +50,10 @@ def identificar_bot(user_agent_string):
         return True
     return False
 
+
 def send_email(count, log, report_date_to_display):
-    if not all([EMAIL_ADDRESS, EMAIL_PASSWORD]):
+    if not all([RESEND_API_KEY, EMAIL_TO]):
+        logging.error("Configurações do Resend ou e-mail de destino ausentes.")
         return False
     try:
         report_date_str = report_date_to_display.strftime('%d/%m/%Y')
@@ -62,26 +65,39 @@ def send_email(count, log, report_date_to_display):
                 total_visitas=count,
                 log_itens=sorted_log_items
             )
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = f"📊 Relatório de Acessos - {report_date_str}"
-        msg['From'] = EMAIL_ADDRESS
-        msg['To'] = EMAIL_ADDRESS
-        msg.attach(MIMEText(html_content, 'html', 'utf-8'))
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
-            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            server.send_message(msg)
+
+        params = {
+            "from": f"Relatórios <{RESEND_FROM}>",
+            "to": [EMAIL_TO],
+            "subject": f"Relatório de Acessos - {report_date_str}",
+            "html": html_content
+        }
+
+        resend.Emails.send(params)
         return True
     except Exception as ex:
-        logging.error(f"Erro ao enviar relatório: {ex}")
+        logging.error(f"Erro ao enviar relatório via Resend: {ex}")
         return False
 
+
 def register_visit_in_redis():
+    origin = request.headers.get('Origin') or request.headers.get('Referer')
+    if not origin or ALLOWED_DOMAIN not in origin:
+        logging.warning(f"Acesso bloqueado: Origem não autorizada ({origin})")
+        return False, 403
+
+    if TRACK_TOKEN:
+        auth_token = request.headers.get('X-Track-Token')
+        if auth_token != TRACK_TOKEN:
+            logging.warning("Acesso bloqueado: Token de rastreamento inválido.")
+            return False, 401
+
     user_agent_string = request.headers.get('User-Agent')
     if not user_agent_string or identificar_bot(user_agent_string):
         return True, 200
     if not redis_client:
         return False, 503
+
     now_utc = datetime.now(timezone.utc)
     brt_offset = timedelta(hours=-3)
     brt_tz = timezone(brt_offset, name="BRT")
@@ -91,17 +107,19 @@ def register_visit_in_redis():
     count_key = f"portfolio:count:{date_str}"
     log_key = f"portfolio:log:{date_str}"
     ttl_seconds = 172800
+
     try:
         pipe = redis_client.pipeline()
         pipe.incr(count_key)
         pipe.hincrby(log_key, hour_str, 1)
         pipe.expire(count_key, ttl_seconds)
         pipe.expire(log_key, ttl_seconds)
-        results = pipe.execute()
+        pipe.execute()
         return True, 204
     except Exception as ex:
         logging.error(f"Erro ao registrar visualização: {ex}")
         return False, 500
+
 
 def process_report_request():
     brt_tz = timezone(timedelta(hours=-3), name="BRT")
@@ -125,10 +143,12 @@ def process_report_request():
         logging.error(f"Erro no processamento do relatório: {ex}")
         return {"message": "Erro interno no servidor."}, 500
 
-@app.route('/track-visit', methods=['GET'])
+
+@app.route('/track-visit', methods=['POST'])
 def track_visit():
     success, status_code = register_visit_in_redis()
     return "", status_code
+
 
 @app.route('/send-report', methods=['POST'])
 def trigger_send_report():
@@ -138,6 +158,7 @@ def trigger_send_report():
         return jsonify({"message": "Não Autorizado"}), 401
     response_data, status_code = process_report_request()
     return jsonify(response_data), status_code
+
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 8080))
