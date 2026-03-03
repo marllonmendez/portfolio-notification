@@ -14,7 +14,7 @@ O sistema funciona como um microsserviço de análise **ultra-leve e seguro**, c
 - **Banco de Dados (Cache):** Redis (via [Upstash](https://upstash.com/))
 - **Template Engine:** Jinja2 (HTML/CSS Dinâmico)
 - **Containerização:** Docker
-- - **Serviço de E-mail:** [Resend](https://resend.com/)
+- **Serviço de E-mail:** [Resend](https://resend.com/)
 - **Plataforma de Hospedagem:** [Render](https://render.com/)
 
 ### Funcionalidades
