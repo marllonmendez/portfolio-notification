@@ -61,18 +61,20 @@ def send_email(count, log, report_date_to_display):
     try:
         report_date_str = report_date_to_display.strftime('%d/%m/%Y')
         sorted_log_items = sorted(log.items())
+        ano_atual = datetime.today().year
         with app.app_context():
             html_content = render_template(
                 'report.html',
                 data_relatorio=report_date_str,
                 total_visitas=count,
-                log_itens=sorted_log_items
+                log_itens=sorted_log_items,
+                ano_atual=ano_atual
             )
 
         params = {
-            "from": f"Relatórios <{RESEND_FROM}>",
+            "from": f"Marllon Mendez <{RESEND_FROM}>",
             "to": [EMAIL_TO],
-            "subject": f"Relatório de Acessos - {report_date_str}",
+            "subject": f"[Portfolio] Relatório de Acessos - {report_date_str}",
             "html": html_content
         }
 
