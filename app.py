@@ -119,7 +119,9 @@ def register_visit_in_redis():
         pipe.hincrby(log_key, hour_str, 1)
         pipe.expire(count_key, ttl_seconds)
         pipe.expire(log_key, ttl_seconds)
-        pipe.execute()
+        results = pipe.execute()
+        new_count = results[0]
+        logging.info(f"Visualização registrada: {date_str} {hour_str}. Total do dia: {new_count}")
         return True, 204
     except Exception as ex:
         logging.error(f"Erro ao registrar visualização: {ex}")
