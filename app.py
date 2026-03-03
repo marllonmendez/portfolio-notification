@@ -12,14 +12,15 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 load_dotenv()
 RESEND_API_KEY = os.getenv('RESEND_API_KEY')
-EMAIL_TO = os.getenv('EMAIL_ADDRESS')
+EMAIL_TO = os.getenv('EMAIL_TO')
 RESEND_FROM = os.getenv('RESEND_FROM')
 UPSTASH_REDIS_REST_URL = os.getenv('UPSTASH_REDIS_REST_URL')
 CRON_SECRET = os.getenv('CRON_SECRET')
 TRACK_TOKEN = os.getenv('TRACK_TOKEN')
 ALLOWED_DOMAIN = os.getenv('ALLOWED_DOMAIN')
 
-resend.api_key = RESEND_API_KEY
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
 
 app = Flask(__name__)
 CORS(app)
@@ -52,9 +53,11 @@ def identificar_bot(user_agent_string):
 
 
 def send_email(count, log, report_date_to_display):
-    if not all([RESEND_API_KEY, EMAIL_TO]):
-        logging.error("Configurações do Resend ou e-mail de destino ausentes.")
+    if not all([RESEND_API_KEY, EMAIL_TO, RESEND_FROM]):
+        logging.error(f"Configurações do Resend ausentes -> API_KEY: {bool(RESEND_API_KEY)}, EMAIL_TO: {bool(EMAIL_TO)}, RESEND_FROM: {bool(RESEND_FROM)}")
         return False
+    
+    resend.api_key = RESEND_API_KEY
     try:
         report_date_str = report_date_to_display.strftime('%d/%m/%Y')
         sorted_log_items = sorted(log.items())
